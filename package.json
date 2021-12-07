@@ -14,7 +14,8 @@
 	},
 	"scripts": {
 		"prepublishOnly": "tsc --project tsconfig.production.json",
-		"test": "xo && tsc && ava"
+		"test": "xo && tsc && ava",
+		"postinstall": "tsc --outDir ./dist"
 	},
 	"main": "dist/index.js",
 	"files": [

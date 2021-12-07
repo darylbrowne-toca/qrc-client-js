@@ -1,8 +1,8 @@
-import {Readable, Writable} from 'stream';
-import {Socket} from 'net';
-import pump from 'pump';
+import { Readable, Writable } from "stream";
+import { Socket } from "net";
+import pump from "pump";
 // @ts-expect-error
-import AnyObservable from 'any-observable';
+import AnyObservable from "any-observable";
 import {
 	Observable,
 	AutoPollUpdate,
@@ -10,13 +10,20 @@ import {
 	JsonRpcRequest,
 	JsonRpcResponse,
 	ResponseHandler,
-	CMDp, Observer
-} from './types';
-import {autoPollGroup, destroyGroup, noOp} from './commands';
-import {log, nullJsonDecoder, nullJsonEncoder, addRpcVersion, timeout} from './lib/stream-transforms';
-import UidMap from './lib/uid-map';
-import QrcError from './lib/qrc-error';
-import SocketWrapper from './lib/socket-wrapper';
+	CMDp,
+	Observer,
+} from "./types";
+import { autoPollGroup, destroyGroup, noOp } from "./commands";
+import {
+	log,
+	nullJsonDecoder,
+	nullJsonEncoder,
+	addRpcVersion,
+	timeout,
+} from "./lib/stream-transforms";
+import UidMap from "./lib/uid-map";
+import QrcError from "./lib/qrc-error";
+import SocketWrapper from "./lib/socket-wrapper";
 
 export default class QrcClient extends SocketWrapper {
 	readonly readStream: Readable;
@@ -32,15 +39,16 @@ export default class QrcClient extends SocketWrapper {
 	constructor() {
 		super();
 
-		['close', 'connect', 'end', 'ready', 'lookup', 'timeout'].forEach(eventName => {
-			this._forwardedEvents[eventName] = (...args: any[]) => this.emit(eventName, ...args);
-		});
-
-		this.once('error', () => this.destroy());
+		["close", "connect", "end", "ready", "lookup", "timeout"].forEach(
+			(eventName) => {
+				this._forwardedEvents[eventName] = (...args: any[]) =>
+					this.emit(eventName, ...args);
+			}
+		);
 
 		this._connectForwardedEvents(this.socket);
 
-		this.readStream = log('received: ');
+		this.readStream = log("received: ");
 
 		let finished = false;
 		const errors: any[] = [];
@@ -48,7 +56,7 @@ export default class QrcClient extends SocketWrapper {
 		const finish = (err: any): void => {
 			if (err && !errors.includes(err)) {
 				errors.push(err);
-				this.emit('error', err);
+				this.emit("error", err);
 			}
 
 			if (finished) {
@@ -56,15 +64,10 @@ export default class QrcClient extends SocketWrapper {
 			}
 
 			finished = true;
-			this.emit('finish', err);
+			this.emit("finish", err);
 		};
 
-		pump(
-			this.socket,
-			nullJsonDecoder(),
-			this.readStream,
-			finish
-		);
+		pump(this.socket, nullJsonDecoder(), this.readStream, finish);
 
 		this.writeStream = addRpcVersion();
 		pump(
@@ -72,20 +75,14 @@ export default class QrcClient extends SocketWrapper {
 			timeout(5000, () => {
 				this.writeStream.write(noOp());
 			}),
-			log('sending: '),
+			log("sending: "),
 			nullJsonEncoder(),
 			this.socket,
 			finish
 		);
 
-		this.readStream.on('data', this._data);
+		this.readStream.on("data", this._data);
 	}
-
-	destroy = (error?: Error): void => {
-		this.socket.destroy(error);
-		this.readStream.destroy(error);
-		this._disconnectForwardedEvents(this.socket);
-	};
 
 	async send<T>(command: CMDp<T>): Promise<T> {
 		return new Promise((resolve, reject) => {
@@ -97,22 +94,32 @@ export default class QrcClient extends SocketWrapper {
 				}
 			});
 
-			this.writeStream.write({...command, id});
+			this.writeStream.write({ ...command, id });
 		});
 	}
 
-	pollGroup(groupId: string, {rate = 0.2, autoDestroy = false}: {rate?: number; autoDestroy?: boolean} = {}): Observable<AutoPollUpdate> {
+	pollGroup(
+		groupId: string,
+		{
+			rate = 0.2,
+			autoDestroy = false,
+		}: { rate?: number; autoDestroy?: boolean } = {}
+	): Observable<AutoPollUpdate> {
 		return new AnyObservable((observer: Observer<AutoPollUpdate>) => {
-			const handler = ({method, params}: JsonRpcRequest): void => {
-				if (method === 'ChangeGroup.Poll') {
-					const update = params as unknown as AutoPollUpdate;
-					if (update.Id === groupId && update.Changes && (update.Changes.length > 0)) {
+			const handler = ({ method, params }: JsonRpcRequest): void => {
+				if (method === "ChangeGroup.Poll") {
+					const update = (params as unknown) as AutoPollUpdate;
+					if (
+						update.Id === groupId &&
+						update.Changes &&
+						update.Changes.length > 0
+					) {
 						observer.next(update);
 					}
 				}
 			};
 
-			this.on('request', handler);
+			this.on("request", handler);
 
 			void this.send(autoPollGroup(groupId, rate));
 
@@ -121,16 +128,18 @@ export default class QrcClient extends SocketWrapper {
 					void this.send(destroyGroup(groupId));
 				}
 
-				this.off('request', handler);
+				this.off("request", handler);
 			};
 		});
 	}
 
 	private readonly _data = (data: any) => {
 		if (data.result || data.error) {
-			const response = (data as JsonRpcResponse<any>);
-			if (typeof response.id === 'number') {
-				const callback: ResponseHandler<any> | undefined = this._map.pull(data.id);
+			const response = data as JsonRpcResponse<any>;
+			if (typeof response.id === "number") {
+				const callback: ResponseHandler<any> | undefined = this._map.pull(
+					data.id
+				);
 				if (callback) {
 					if (response.error) {
 						callback(new QrcError(response.error));
@@ -140,8 +149,8 @@ export default class QrcClient extends SocketWrapper {
 				}
 			}
 		} else {
-			const request = (data as JsonRpcRequest);
-			this.emit('request', request);
+			const request = data as JsonRpcRequest;
+			this.emit("request", request);
 		}
 	};
 }
