@@ -15,7 +15,7 @@
 	"scripts": {
 		"prepublishOnly": "tsc --project tsconfig.production.json",
 		"test": "xo && tsc && ava",
-		"postinstall": "tsc --outDir ./dist"
+		"postinstall": "tsc --project tsconfig.production.json --outDir ./dist"
 	},
 	"main": "dist/index.js",
 	"files": [
@@ -32,6 +32,7 @@
 		"pump": "^3.0.0",
 		"split2": "^3.2.2",
 		"supports-color": "^7.2.0",
+		"typescript": "^4.0.3",
 		"through2": "^4.0.2"
 	},
 	"devDependencies": {
@@ -59,7 +60,6 @@
 		"eslint-config-xo-typescript": "^0.34.1",
 		"is-ci": "^2.0.0",
 		"p-event": "^4.2.0",
-		"typescript": "^4.0.3",
 		"xo": "^0.34.0",
 		"zen-observable": "^0.8.15"
 	},
